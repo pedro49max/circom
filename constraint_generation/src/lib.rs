@@ -6,6 +6,7 @@ mod environment_utils;
 mod execute;
 mod execution_data;
 mod assignment_utils;
+mod compute_bounds;
 
 use ansi_term::Colour;
 use circom_algebra::algebra::{ArithmeticError, ArithmeticExpression};

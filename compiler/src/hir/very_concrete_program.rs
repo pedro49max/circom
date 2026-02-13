@@ -13,6 +13,12 @@ pub type Code = Statement;
 pub type TagInfo = BTreeMap<String, Option<BigInt>>;
 
 #[derive(Clone)]
+pub struct Bounds{
+    pub min: BigInt,
+    pub max: BigInt,
+}
+
+#[derive(Clone)]
 pub struct Argument {
     pub name: String,
     pub values: Vec<BigInt>,
@@ -204,6 +210,7 @@ pub struct TemplateInstance {
     pub clusters: Vec<TriggerCluster>,
     pub code: Code,
     pub is_extern_c: bool,
+    pub signals_to_bounds: HashMap<String, Bounds>
 }
 
 pub struct TemplateConfig {
@@ -242,7 +249,8 @@ impl TemplateInstance {
             triggers: config.triggers,
             clusters: config.clusters,
             signals_to_tags: config.signals_to_tags,
-            is_extern_c: config.is_extern_c
+            is_extern_c: config.is_extern_c,
+            signals_to_bounds: HashMap::new()
         }
     }
 
