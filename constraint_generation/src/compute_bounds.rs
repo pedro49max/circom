@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::ops::{Add, AddAssign, Div, Sub};
 use crate::FlagsExecution;
 use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
 use compiler::hir::very_concrete_program::Bounds;
 
 type CCResult = Result<(), ReportCollection>;
@@ -134,8 +135,8 @@ fn compute_bounds_expression(
     let no_bounds = Bounds{min: BigInt::from(0), max: BigInt::from(6)};
     match expr{
             InfixOp{  lhe, rhe, infix_op,.. }=>compute_bounds_infix_operation(lhe, rhe, *infix_op, context, environment, prime),
-            PrefixOp {  .. }=>todo!(),
-            InlineSwitchOp { .. }=>todo!(),
+            PrefixOp { rhe, prefix_op,.. }=>compute_bounds_prefix_operation(rhe, *prefix_op, context, environment, prime),
+            InlineSwitchOp { if_true,if_false,.. }=>compute_bounds_in_line_switch_operation(if_true, if_false, context, environment, prime),
             ParallelOp { .. }=>no_bounds,
             Variable { .. }=>todo!(),
             Number{  .. }=>todo!(),
@@ -241,4 +242,31 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
         },
     }
 
+}
+
+fn compute_bounds_prefix_operation(expr_r: &Expression, operator: ExpressionPrefixOpcode, context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)->Bounds{
+        let br = compute_bounds_expression(expr_r, context, environment, prime);
+        match operator{
+            program_structure::ast::ExpressionPrefixOpcode::Sub => Bounds{
+                min: -br.max,
+                max: -br.min
+            },
+            program_structure::ast::ExpressionPrefixOpcode::BoolNot => Bounds{
+                min: BigInt::from(0),
+                max: BigInt::from(1)
+            }
+            program_structure::ast::ExpressionPrefixOpcode::Complement => Bounds{ //Cambio de pos a neg?
+                min: BigInt::from(0),
+                max: br.max*BigInt::from(2)
+            }
+        }
+}
+
+fn compute_bounds_in_line_switch_operation(expr_true: &Expression, expr_false: &Expression,  context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)->Bounds{
+    let btrue = compute_bounds_expression(expr_true, context, environment, prime);
+    let bfalse = compute_bounds_expression(expr_false, context, environment, prime);
+    Bounds{
+        min: btrue.min.min(bfalse.min),//No se si es corecto mi entendimiento de esta operacion
+        max: btrue.max.max(bfalse.max)
+    }
 }
