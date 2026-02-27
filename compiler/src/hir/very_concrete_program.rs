@@ -5,6 +5,7 @@ use program_structure::program_library::file_definition::FileLibrary;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
+use std::fmt;
 
 pub type VCT = Vec<usize>;
 pub type Length = usize;
@@ -16,6 +17,12 @@ pub type TagInfo = BTreeMap<String, Option<BigInt>>;
 pub struct Bounds{
     pub min: BigInt,
     pub max: BigInt,
+}
+
+impl fmt::Debug  for Bounds{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Bounds: [{}, {}]", self.min, self.max)
+    }
 }
 
 #[derive(Clone)]

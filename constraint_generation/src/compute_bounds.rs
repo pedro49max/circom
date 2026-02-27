@@ -22,10 +22,14 @@ pub fn compute_bounds(
     program_archive: &ProgramArchive,
     prime: &String
 ) -> CCResult {
+    use program_structure::utils::constants::UsefulConstants;
+
     let mut reports = vec![];
+    let prime = UsefulConstants::new(prime).get_p().clone();
+
     for instance in instances {
         let environment = transform_header_into_environment(&instance.header);
-        treat_statement(&instance.code, &mut instance.signals_to_bounds, &environment, prime);
+        treat_statement(&instance.code, &mut instance.signals_to_bounds, &environment, &prime);
     }
     if reports.is_empty() {
         Result::Ok(())
@@ -52,7 +56,7 @@ fn argument_into_slice(argument: &Argument) -> AExpressionSlice {
     AExpressionSlice::new_array(dimensions, arithmetic_expressions)
 }
 
-fn treat_statement(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String) {
+fn treat_statement(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     if stmt.is_initialization_block() {
         treat_init_block(stmt, context, environment, prime)
     } else if stmt.is_block() {
@@ -68,7 +72,7 @@ fn treat_statement(stmt: &Statement, context: &HashMap<String, Bounds>, environm
     }
 }
 
-fn treat_init_block(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String){
+fn treat_init_block(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt){
 
     use Statement::InitializationBlock;
     if let InitializationBlock { initializations, .. } = stmt {
@@ -82,7 +86,7 @@ fn treat_init_block(stmt: &Statement, context: &HashMap<String, Bounds>, environ
     }
 }
 
-fn treat_block(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String) {
+fn treat_block(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::Block;
     if let Block { stmts, .. } = stmt {
         for s in stmts {
@@ -93,7 +97,7 @@ fn treat_block(stmt: &Statement, context: &HashMap<String, Bounds>, environment:
     }
 }
 
-fn treat_while(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String){
+fn treat_while(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt){
     use Statement::While;
     if let While { stmt, .. } = stmt {
         //TODO
@@ -102,7 +106,7 @@ fn treat_while(stmt: &Statement, context: &HashMap<String, Bounds>, environment:
     }
 }
 
-fn treat_conditional(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String) {
+fn treat_conditional(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::IfThenElse;
     if let IfThenElse { if_case, else_case, .. } = stmt {
         //TODO
@@ -112,7 +116,7 @@ fn treat_conditional(stmt: &Statement, context: &HashMap<String, Bounds>, enviro
 }
 
 
-fn treat_substitution(stmt: &Statement, context: &HashMap<String, Bounds>, environment: &EE, prime: &String) {
+fn treat_substitution(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::Substitution;
 
     if let Substitution{rhe, var, ..} = stmt{
@@ -128,28 +132,30 @@ fn treat_substitution(stmt: &Statement, context: &HashMap<String, Bounds>, envir
 }
 
 fn compute_bounds_expression(
-    expr: &Expression, context: &HashMap<String, Bounds>, environment: &EE, prime: &String)
+    expr: &Expression, context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)
 ->Bounds{
     use Expression::*;
+    let no_bounds = Bounds{min: BigInt::from(0), max: prime - 1};
+    println!("Computing bounds of expression");
 
-    let no_bounds = Bounds{min: BigInt::from(0), max: BigInt::from(6)};
-    match expr{
+    let res = match expr{
             InfixOp{  lhe, rhe, infix_op,.. }=>compute_bounds_infix_operation(lhe, rhe, *infix_op, context, environment, prime),
             PrefixOp { rhe, prefix_op,.. }=>compute_bounds_prefix_operation(rhe, *prefix_op, context, environment, prime),
             InlineSwitchOp { if_true,if_false,.. }=>compute_bounds_in_line_switch_operation(if_true, if_false, context, environment, prime),
             ParallelOp { .. }=>no_bounds,
-            Variable { .. }=>todo!(),
-            Number{  .. }=>todo!(),
-            Call{ .. }=>None,
-            AnonymousComp{ .. }=>None,
+            Variable { name, ..}=>todo!(),
+            Number(meta, number)=>todo!(),
+            Call{ .. }=>no_bounds,
+            AnonymousComp{ .. }=>no_bounds,
             ArrayInLine{ .. }=>todo!(),
             UniformArray{ .. }=>todo!(),
-            Tuple {  .. }=>None,
-            BusCall { .. }=>None,
-    }
+            Tuple {  .. }=>no_bounds,
+            BusCall { .. }=>no_bounds,
+    };
+    println!("The result is {:?}", res);
+    res
     
 }
-
 
 fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, operator: ExpressionInfixOpcode, context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)->Bounds{
     // check if the operands have bounds and compute the bounds of the 
@@ -254,7 +260,7 @@ fn compute_bounds_prefix_operation(expr_r: &Expression, operator: ExpressionPref
             program_structure::ast::ExpressionPrefixOpcode::BoolNot => Bounds{
                 min: BigInt::from(0),
                 max: BigInt::from(1)
-            }
+            },
             program_structure::ast::ExpressionPrefixOpcode::Complement => Bounds{ //Cambio de pos a neg?
                 min: BigInt::from(0),
                 max: br.max*BigInt::from(2)

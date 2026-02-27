@@ -208,6 +208,9 @@ impl ExecutedProgram {
         let dag_stats = produce_dags_stats(&dag);
         crate::compute_constants::manage_functions(&mut program, flags, &self.prime)?;
         crate::compute_constants::compute_vct(&mut temp_instances, &program, flags, &self.prime)?;
+
+        crate::compute_bounds::compute_bounds(&mut temp_instances, &program, &self.prime);
+
         let mut mixed = vec![];
         let mut index = 0;
         for in_mixed in mixed_instances {
