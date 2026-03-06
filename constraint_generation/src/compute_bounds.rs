@@ -30,6 +30,10 @@ pub fn compute_bounds(
     for instance in instances {
         let environment = transform_header_into_environment(&instance.header);
         treat_statement(&instance.code, &mut instance.signals_to_bounds, &environment, &prime);
+        for (signal, bounds) in &instance.signals_to_bounds {
+            println!("Signal: {}, Bounds: {:?}", signal, bounds);
+        }
+        println!()
     }
     if reports.is_empty() {
         Result::Ok(())
@@ -109,7 +113,28 @@ fn treat_while(stmt: &Statement, context: &mut HashMap<String, Bounds>, environm
 fn treat_conditional(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::IfThenElse;
     if let IfThenElse { if_case, else_case, .. } = stmt {
-        //TODO
+        let mut context_if: HashMap<String, Bounds> = context.clone();
+        let mut context_else: HashMap<String, Bounds> = context.clone();
+        treat_statement(if_case, &mut context_if, environment, prime);
+        if let Some(else_case) = else_case {
+            treat_statement(else_case, &mut context_else, environment, prime);
+            for (var, bounds_if) in context_if {
+                 if let Some(bounds_else) = context_else.get(&var) {
+                    context.insert(var.clone(), Bounds{
+                        min: bounds_if.min.min(bounds_else.min.clone()),
+                        max: bounds_if.max.max(bounds_else.max.clone())
+                    });
+                }
+                else{
+                    context.insert(var.clone(), bounds_if);
+                }
+            }
+            for (var, bounds_else) in context_else {
+                if !context.contains_key(&var) {
+                    context.insert(var.clone(), bounds_else.clone());
+                }
+            }
+        }
     } else {
         unreachable!()
     }
@@ -119,11 +144,28 @@ fn treat_conditional(stmt: &Statement, context: &mut HashMap<String, Bounds>, en
 fn treat_substitution(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::Substitution;
 
-    if let Substitution{rhe, var, ..} = stmt{
+    if let Substitution{rhe, var, access,..} = stmt{
         // TODO
         // compute the bounds of the result and update the bounds if it is a signal
-        
-        let bounds = compute_bounds_expression(rhe, context, environment, prime);
+        if access.is_empty(){
+            context.insert(var.clone(), compute_bounds_expression(rhe, context, environment, prime));
+        }
+        else{
+            if context.contains_key(var){
+                let bounds_array = context.get(var).unwrap().clone();
+                let bounds_new = compute_bounds_expression(rhe, context, environment, prime);
+                context.insert(var.clone(), Bounds{
+                    min: bounds_array.min.min(bounds_new.min),
+                    max: bounds_array.max.max(bounds_new.max)
+                });
+            }
+            else{
+                context.insert(var.clone(), compute_bounds_expression(rhe, context, environment, prime));
+            }
+            
+        }
+
+        //let bounds = compute_bounds_expression(rhe, context, environment, prime);
         
     } else{
         unreachable!()
@@ -143,12 +185,12 @@ fn compute_bounds_expression(
             PrefixOp { rhe, prefix_op,.. }=>compute_bounds_prefix_operation(rhe, *prefix_op, context, environment, prime),
             InlineSwitchOp { if_true,if_false,.. }=>compute_bounds_in_line_switch_operation(if_true, if_false, context, environment, prime),
             ParallelOp { .. }=>no_bounds,
-            Variable { name, ..}=>todo!(),
-            Number(meta, number)=>todo!(),
+            Variable { name, ..}=>get_bounds_variable(name, context, prime),
+            Number(meta, number)=>get_number_bounds(number, prime),
             Call{ .. }=>no_bounds,
             AnonymousComp{ .. }=>no_bounds,
-            ArrayInLine{ .. }=>todo!(),
-            UniformArray{ .. }=>todo!(),
+            ArrayInLine{ meta, values }=>compute_bounds_array_in_line(values, context, environment, prime),
+            UniformArray{meta, value, .. }=>compute_bounds_uniform_array(value, context, environment, prime),
             Tuple {  .. }=>no_bounds,
             BusCall { .. }=>no_bounds,
     };
@@ -167,40 +209,40 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
     match operator {
         program_structure::ast::ExpressionInfixOpcode::Mul =>{
          Bounds{
-            min: bl.min * (br.min),
-            max: bl.max * (br.max)
+            min: (bl.min * (br.min)) % prime,
+            max: (bl.max * (br.max)) % prime
         }},
         program_structure::ast::ExpressionInfixOpcode::Div => Bounds{
             min: BigInt::from(0),
-            max: prime.clone()
+            max: prime.clone()-1
         },
         program_structure::ast::ExpressionInfixOpcode::Add => Bounds{
-            min: bl.min + br.min,
-            max: bl.max + br.max
+            min: (bl.min + br.min) % prime,
+            max: (bl.max + br.max) % prime
         },
         program_structure::ast::ExpressionInfixOpcode::Sub => Bounds{
-            min: bl.min - br.max,
-            max: bl.max - br.min
+            min: (bl.min - br.max) % prime,
+            max: (bl.max - br.min) % prime
         },
         program_structure::ast::ExpressionInfixOpcode::Pow => Bounds{
-            min: bl.min.min(BigInt::from(1)),//Either 0 or 1
-            max: prime.clone()
+            min: bl.min.min(BigInt::from(1)),
+            max: prime.clone()-1
         },
         program_structure::ast::ExpressionInfixOpcode::IntDiv => Bounds{
-            min: BigInt::from(0),//if br > bl, the result is 0
-            max: bl.max //In integer division, the result is not going to be biger than the dividend
+            min: BigInt::from(0),
+            max: bl.max % prime //In integer division, the result is not going to be bigger than the dividend
         },
         program_structure::ast::ExpressionInfixOpcode::Mod => Bounds{
             min: BigInt::from(0),//if the left operand is a multiple of the right operand, the result is 0
-            max: br.max//In Mod the resuult is not going to be bigger than the right operand
+            max: br.max % prime//In Mod the resuult is not going to be bigger than the right operand
         },
         program_structure::ast::ExpressionInfixOpcode::ShiftL => Bounds{
-            min:  bl.min * 2i32.pow(br.min.to_u32().unwrap()),
-            max:  bl.max * 2i32.pow(br.max.to_u32().unwrap())
+            min:  (bl.min * 2i32.pow(br.min.to_u32().unwrap())) % prime,
+            max:  (bl.max * 2i32.pow(br.max.to_u32().unwrap())) % prime
         },
         program_structure::ast::ExpressionInfixOpcode::ShiftR => Bounds{
             min: BigInt::from(0),
-            max: bl.max //In right shift, the result is not going to be bigger than the left operand
+            max: bl.max % prime //In right shift, the result is not going to be bigger than the left operand
         },
         program_structure::ast::ExpressionInfixOpcode::LesserEq => Bounds{
             min:BigInt::from(0),// 0 or  1
@@ -236,7 +278,7 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
         },
         program_structure::ast::ExpressionInfixOpcode::BitOr => Bounds{
             min: bl.min.max(br.min),
-            max: bl.max + br.max
+            max: (bl.max + br.max) % prime
         },
         program_structure::ast::ExpressionInfixOpcode::BitAnd => Bounds{
             min: BigInt::from(0),
@@ -244,7 +286,7 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
         },
         program_structure::ast::ExpressionInfixOpcode::BitXor => Bounds{
            min: BigInt::from(0),
-            max: bl.max + br.max
+            max: (bl.max + br.max) % prime
         },
     }
 
@@ -254,16 +296,16 @@ fn compute_bounds_prefix_operation(expr_r: &Expression, operator: ExpressionPref
         let br = compute_bounds_expression(expr_r, context, environment, prime);
         match operator{
             program_structure::ast::ExpressionPrefixOpcode::Sub => Bounds{
-                min: -br.max,
-                max: -br.min
+                min: -br.max+prime.clone(),
+                max: -br.min+prime.clone()
             },
             program_structure::ast::ExpressionPrefixOpcode::BoolNot => Bounds{
                 min: BigInt::from(0),
                 max: BigInt::from(1)
             },
-            program_structure::ast::ExpressionPrefixOpcode::Complement => Bounds{ //Cambio de pos a neg?
+            program_structure::ast::ExpressionPrefixOpcode::Complement => Bounds{
                 min: BigInt::from(0),
-                max: br.max*BigInt::from(2)
+                max: (br.max * BigInt::from(2)) % prime
             }
         }
 }
@@ -272,7 +314,40 @@ fn compute_bounds_in_line_switch_operation(expr_true: &Expression, expr_false: &
     let btrue = compute_bounds_expression(expr_true, context, environment, prime);
     let bfalse = compute_bounds_expression(expr_false, context, environment, prime);
     Bounds{
-        min: btrue.min.min(bfalse.min),//No se si es corecto mi entendimiento de esta operacion
+        min: btrue.min.min(bfalse.min),
         max: btrue.max.max(bfalse.max)
+    }
+}
+
+fn get_bounds_variable(name: &String, context: &HashMap<String, Bounds>, prime: &BigInt)->Bounds{
+    if let Some(bounds) = context.get(name){
+        bounds.clone()
+    } 
+     else{
+        Bounds{min: BigInt::from(0), max: prime.clone()-1}
+    }
+
+}
+ 
+fn get_number_bounds(number: &BigInt, prime: &BigInt)->Bounds{//Funciona con los negativos? 
+    Bounds{min: number % prime, max: number % prime}    
+}
+
+fn compute_bounds_array_in_line(values: &Vec<Expression>, context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)->Bounds{
+    let mut min = prime.clone();
+    let mut max = BigInt::from(0);
+    for v in values{
+        let b = compute_bounds_expression(v, context, environment, prime);
+        min = min.min(b.min);
+        max = max.max(b.max);
+    }
+    Bounds{min: min, max: max}
+}
+
+fn compute_bounds_uniform_array(value: &Box<Expression>,  context: &HashMap<String, Bounds>, environment: &EE, prime: &BigInt)->Bounds{//Para que es dimension?
+    let value_bounds = compute_bounds_expression(value, context, environment, prime);
+    Bounds{
+        min: value_bounds.min,
+        max: value_bounds.max
     }
 }
