@@ -103,10 +103,19 @@ fn treat_block(stmt: &Statement, context: &mut HashMap<String, Bounds>, environm
 
 fn treat_while(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt){
     use Statement::While;
-    if let While { stmt, .. } = stmt {
-        //TODO
+    if let While { stmt: loop_stmt, .. } = stmt {
+        
+        let mut temp_context = HashMap::new();
+        
+        treat_statement(loop_stmt, &mut temp_context, environment, prime);
+        
+        for var in temp_context.keys() {
+            if context.contains_key(var) {
+                context.insert(var.clone(), Bounds { min: BigInt::from(0), max: prime.clone() - 1 });
+            }
+        }
     } else {
-        unreachable!()
+        unreachable!()  
     }
 }
 
