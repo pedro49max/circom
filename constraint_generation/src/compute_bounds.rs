@@ -110,7 +110,7 @@ fn treat_while(stmt: &Statement, context: &mut HashMap<String, Bounds>, environm
         treat_statement(loop_stmt, &mut temp_context, environment, prime);
         
         for var in temp_context.keys() {
-            if context.contains_key(var) {
+            if context.contains_key(var) {//Si no varía el rango, se puede mantener el rango
                 context.insert(var.clone(), Bounds { min: BigInt::from(0), max: prime.clone() - 1 });
             }
         }
@@ -243,7 +243,7 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
         },
         program_structure::ast::ExpressionInfixOpcode::Mod => Bounds{
             min: BigInt::from(0),//if the left operand is a multiple of the right operand, the result is 0
-            max: br.max % prime//In Mod the resuult is not going to be bigger than the right operand
+            max: br.max % prime//In Mod the result is not going to be bigger than the right operand
         },
         program_structure::ast::ExpressionInfixOpcode::ShiftL => Bounds{
             min:  (bl.min * 2i32.pow(br.min.to_u32().unwrap())) % prime,
@@ -305,8 +305,8 @@ fn compute_bounds_prefix_operation(expr_r: &Expression, operator: ExpressionPref
         let br = compute_bounds_expression(expr_r, context, environment, prime);
         match operator{
             program_structure::ast::ExpressionPrefixOpcode::Sub => Bounds{
-                min: -br.max+prime.clone(),
-                max: -br.min+prime.clone()
+                min: -br.max+(prime.clone() -1),
+                max: -br.min+(prime.clone() -1)
             },
             program_structure::ast::ExpressionPrefixOpcode::BoolNot => Bounds{
                 min: BigInt::from(0),
