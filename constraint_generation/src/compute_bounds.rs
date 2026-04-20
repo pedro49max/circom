@@ -19,6 +19,7 @@ type CCResult = Result<(), ReportCollection>;
 
 pub fn compute_bounds(
     instances: &mut Vec<TemplateInstance>,
+    id_to_position: &HashMap<usize, usize>,
     program_archive: &ProgramArchive,
     prime: &String
 ) -> CCResult {
@@ -27,7 +28,8 @@ pub fn compute_bounds(
     let mut reports = vec![];
     let prime = UsefulConstants::new(prime).get_p().clone();
 
-    for instance in instances {
+    // First round -> compute the bounds taking into account just the statements
+    for instance in instances.iter_mut() {
         let environment = transform_header_into_environment(&instance.header);
         treat_statement(&instance.code, &mut instance.signals_to_bounds, &environment, &prime);
         for (signal, bounds) in &instance.signals_to_bounds {
@@ -35,6 +37,32 @@ pub fn compute_bounds(
         }
         println!()
     }
+
+    // Connect the inputs with the bounds that we have computed for the father components
+
+    // 1. For each template_instance compute the father templates that call it
+
+    let template_to_fathers = compute_father_templates(instances);
+
+    for (template_id, fathers) in &template_to_fathers{
+        let pos = id_to_position[template_id];
+        let template_name = &instances[pos].template_name;
+        println!("The template {} has the following fathers: ", template_name);
+        for (comp, father_id) in fathers{
+            let father_pos = id_to_position[father_id];
+            let father_name = &instances[father_pos].template_name;
+            println!("Template {} subcomponent {}", father_name, comp);
+        }
+    }
+
+    // 2. Check the bounds of the signal in this father templates. Take the minimum
+
+    // 3. Now send the information of the outputs to all fathers
+
+    // 4. Recalculate again
+
+
+
     if reports.is_empty() {
         Result::Ok(())
     } else {
@@ -359,4 +387,36 @@ fn compute_bounds_uniform_array(value: &Box<Expression>,  context: &HashMap<Stri
         min: value_bounds.min,
         max: value_bounds.max
     }
+}
+
+
+
+fn compute_father_templates(
+    instances: & Vec<TemplateInstance>)-> HashMap<usize, Vec<(String, usize)>>
+{
+    let mut template_to_fathers: HashMap<usize, Vec<(String, usize)>> = HashMap::new();
+    for instance in instances{
+        let father_id = instance.template_id;
+        let children = &instance.triggers;
+        for child in children{
+            let child_id = child.template_id;
+            let child_name = child.component_name.clone();
+
+            // store that child id is the subcomponent child_name of father id
+
+            match template_to_fathers.get_mut(&child_id){
+                Some(father_list)=>{
+                    father_list.push((child_name, father_id));
+                }
+                None => 
+                {
+                    template_to_fathers.insert(
+                        child_id,
+                        vec![(child_name, father_id)]
+                    );
+                }
+            }
+        }
+    }
+    template_to_fathers
 }

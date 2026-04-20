@@ -192,9 +192,11 @@ impl ExecutedProgram {
         }
 
         let mut has_extern_c = false;
+        let mut tempid_to_tempinstance = HashMap::new();
         for exe in self.model {
             let tmp_instance = exe.export_to_circuit(&mut temp_instances, &buses_table);
             has_extern_c |= tmp_instance.is_extern_c;
+            tempid_to_tempinstance.insert(tmp_instance.template_id, temp_instances.len());
             temp_instances.push(tmp_instance);
         }
 
@@ -209,7 +211,7 @@ impl ExecutedProgram {
         crate::compute_constants::manage_functions(&mut program, flags, &self.prime)?;
         crate::compute_constants::compute_vct(&mut temp_instances, &program, flags, &self.prime)?;
 
-        crate::compute_bounds::compute_bounds(&mut temp_instances, &program, &self.prime);
+        crate::compute_bounds::compute_bounds(&mut temp_instances, &tempid_to_tempinstance, &program, &self.prime)?;
 
         let mut mixed = vec![];
         let mut index = 0;
