@@ -267,7 +267,7 @@ fn compute_bounds_infix_operation(expr_l: &Expression, expr_r: &Expression, oper
         },
         program_structure::ast::ExpressionInfixOpcode::IntDiv => Bounds{
             min: BigInt::from(0),
-            max: bl.max % prime //In integer division, the result is not going to be bigger than the dividend
+            max: (bl.max /br.min) % prime
         },
         program_structure::ast::ExpressionInfixOpcode::Mod => Bounds{
             min: BigInt::from(0),//if the left operand is a multiple of the right operand, the result is 0
