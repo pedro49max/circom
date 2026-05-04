@@ -4,7 +4,7 @@ use circom_algebra::algebra::ArithmeticExpression;
 use compiler::hir::very_concrete_program::{Argument, TemplateInstance};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
-use program_structure::ast::{Expression, Meta, Statement};
+use program_structure::ast::{Expression, Access, Meta, Statement};
 use program_structure::error_definition::ReportCollection;
 use program_structure::program_archive::ProgramArchive;
 use std::collections::HashMap;
@@ -44,6 +44,8 @@ pub fn compute_bounds(
 
     let template_to_fathers = compute_father_templates(instances);
 
+
+    // EXAMPLE: Just to print the info of each template their father
     for (template_id, fathers) in &template_to_fathers{
         let pos = id_to_position[template_id];
         let template_name = &instances[pos].template_name;
@@ -55,7 +57,60 @@ pub fn compute_bounds(
         }
     }
 
-    // 2. Check the bounds of the signal in this father templates. Take the minimum
+    // 2. Check the bounds of the signal in this father templates. Take the least precise bounds
+    // Example:
+    // For signal x, we look at their father. If the father component has the subcomponent com
+    // check the value of the signal com.x --> update using this signals
+    // Take the min for the mins and max for the maxs between all fathers
+
+    for (template_id, fathers) in &template_to_fathers{
+        let new_bounds: HashMap<String, Bounds> = HashMap::new();
+
+        let pos = id_to_position[template_id];
+        let template_name = &instances[pos].template_name;
+        // Check the father templates and get the bounds
+        for (comp_name, father_id) in fathers{
+            let father_pos = id_to_position[father_id];
+            let father_name = &instances[father_pos].template_name;
+            let father_bounds = &instances[father_pos].signals_to_bounds;
+
+            // get the bounds that are of the form
+            // comp_name.signal name --> we can use the bound signal_name for the child template
+
+            for (signal, bounds) in father_bounds{
+                // split and study only if the part before the point is comp_name
+                let splitted_signal_name: Vec<&str> = signal.split(".").collect();
+                if splitted_signal_name[0] == comp_name{
+                    // in this case it may be a input/output signal --> we need to update the child
+                    if splitted_signal_name.len() > 1{
+                        // in this case it is a signal of the child component --> we study it
+                        // Example just to show the intuition
+                        let signal_name = splitted_signal_name[1];
+
+                        println!("The signal {} of the template {} has the following bounds in the father template {}",
+                            signal_name,
+                            template_name, 
+                            father_name
+                        );
+                        println!("Bounds: {} - {}",
+                            bounds.min,
+                            bounds.max
+                        );
+
+                        // TODO: use this bounds for updating
+
+                    }
+                }
+                // in other case it is not a signal of the children component, no need to study
+            }
+        }
+
+    }
+    
+
+    // To get the name of the signal do the following: 
+    // subcomponent_name.in1 ==> it corresponds to the input signal in1 of subcomponent_name
+
 
     // 3. Now send the information of the outputs to all fathers
 
@@ -137,10 +192,14 @@ fn treat_while(stmt: &Statement, context: &mut HashMap<String, Bounds>, environm
         
         treat_statement(loop_stmt, &mut temp_context, environment, prime);
         
-        for var in temp_context.keys() {
-            if context.contains_key(var) {//Si no varía el rango, se puede mantener el rango
-                context.insert(var.clone(), Bounds { min: BigInt::from(0), max: prime.clone() - 1 });
+        for (var, bounds) in temp_context {
+            if context.contains_key(&var) {//Si no varía el rango, se puede mantener el rango
+                //context.insert(var.clone(), Bounds { min: BigInt::from(0), max: prime.clone() - 1 });
+                
             }
+
+            // TODO: we need to make this more precise, in case the bounds do not depend of other signals
+            context.insert(var,bounds);
         }
     } else {
         unreachable!()  
@@ -178,31 +237,51 @@ fn treat_conditional(stmt: &Statement, context: &mut HashMap<String, Bounds>, en
 }
 
 
+
 fn treat_substitution(stmt: &Statement, context: &mut HashMap<String, Bounds>, environment: &EE, prime: &BigInt) {
     use Statement::Substitution;
 
+    fn contains_array_access(access: &Vec<Access>)-> bool{
+        for acc in access{
+            match acc{
+                Access::ArrayAccess(_) => return true,
+                Access::ComponentAccess(_) =>{}
+            } 
+        }
+        false
+    }
+
     if let Substitution{rhe, var, access,..} = stmt{
-        // TODO
+
+        // Get the complete signal name considering the component accesses
+        let complete_name = treat_access_name(var, access);
+
+        // Check if it is array or not
+        let is_array_access = contains_array_access(access);
+
+
         // compute the bounds of the result and update the bounds if it is a signal
-        if access.is_empty(){
-            context.insert(var.clone(), compute_bounds_expression(rhe, context, environment, prime));
+        if !is_array_access{
+            context.insert(complete_name, compute_bounds_expression(rhe, context, environment, prime));
         }
         else{
-            if context.contains_key(var){
-                let bounds_array = context.get(var).unwrap().clone();
+            if context.contains_key(&complete_name){
+                let bounds_array = context.get(&complete_name).unwrap().clone();
                 let bounds_new = compute_bounds_expression(rhe, context, environment, prime);
-                context.insert(var.clone(), Bounds{
+                context.insert(complete_name, Bounds{
                     min: bounds_array.min.min(bounds_new.min),
                     max: bounds_array.max.max(bounds_new.max)
                 });
             }
             else{
-                context.insert(var.clone(), compute_bounds_expression(rhe, context, environment, prime));
+                context.insert(
+                    complete_name, 
+                    compute_bounds_expression(rhe, context, environment, prime)
+                );
             }
             
         }
 
-        //let bounds = compute_bounds_expression(rhe, context, environment, prime);
         
     } else{
         unreachable!()
@@ -215,14 +294,14 @@ fn compute_bounds_expression(
 ->Bounds{
     use Expression::*;
     let no_bounds = Bounds{min: BigInt::from(0), max: prime - 1};
-    println!("Computing bounds of expression");
+    //println!("Computing bounds of expression");
 
     let res = match expr{
             InfixOp{  lhe, rhe, infix_op,.. }=>compute_bounds_infix_operation(lhe, rhe, *infix_op, context, environment, prime),
             PrefixOp { rhe, prefix_op,.. }=>compute_bounds_prefix_operation(rhe, *prefix_op, context, environment, prime),
             InlineSwitchOp { if_true,if_false,.. }=>compute_bounds_in_line_switch_operation(if_true, if_false, context, environment, prime),
             ParallelOp { .. }=>no_bounds,
-            Variable { name, ..}=>get_bounds_variable(name, context, prime),
+            Variable { name, access, ..}=>get_bounds_variable(name, access, context, prime),
             Number(meta, number)=>get_number_bounds(number, prime),
             Call{ .. }=>no_bounds,
             AnonymousComp{ .. }=>no_bounds,
@@ -231,7 +310,7 @@ fn compute_bounds_expression(
             Tuple {  .. }=>no_bounds,
             BusCall { .. }=>no_bounds,
     };
-    println!("The result is {:?}", res);
+    //println!("The result is {:?}", res);
     res
     
 }
@@ -356,8 +435,31 @@ fn compute_bounds_in_line_switch_operation(expr_true: &Expression, expr_false: &
     }
 }
 
-fn get_bounds_variable(name: &String, context: &HashMap<String, Bounds>, prime: &BigInt)->Bounds{
-    if let Some(bounds) = context.get(name){
+
+// AUXILIAR FUNCTION TO GET THE COMPLETE SIGNAL NAME
+// treat the access for the components --> study the access
+fn treat_access_name(name: &String, access: &Vec<Access>) -> String{
+    let mut new_name = name.clone();
+    for acc in access{
+        match acc{
+            Access::ArrayAccess(_) =>{
+                // In this case we do not need anything, all positions of the arrays 
+                // have the same bounds
+            }
+            Access::ComponentAccess(comp_name) =>{
+                // in this case we concatenate the names. We need this for the propagation
+                // of input/output signal bounds
+                new_name = format!("{}.{}", new_name, comp_name);
+            }
+        }
+    }
+    new_name
+}
+
+fn get_bounds_variable(name: &String, access: &Vec<Access>, context: &HashMap<String, Bounds>, prime: &BigInt)->Bounds{
+    let complete_var_name = treat_access_name(name, access);
+    
+    if let Some(bounds) = context.get(&complete_var_name){
         bounds.clone()
     } 
      else{
