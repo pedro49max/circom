@@ -122,4 +122,3 @@ template EdDSAMiMCVerifier() {
     eqCheckY.in[0] <== mulFix.out[1];
     eqCheckY.in[1] <== addRight.yout;
 }
-//Da stack overflow

@@ -140,6 +140,3 @@ template MontgomeryDouble() {
     out[0] <== B*lamda*lamda - A - 2*in[0];
     out[1] <== lamda * (in[0] - out[0]) - in[1];
 }
-
-
-//nO DEJA

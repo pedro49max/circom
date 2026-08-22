@@ -26,8 +26,6 @@ template XOR() {
     out <== a + b - 2*a*b;
 }
 
-//Signal: out, Bounds: Bounds: [-2, 21888242871839275222246405745257275088548364400416034343698204186575808495615]
-
 template AND() {
     signal input a;
     signal input b;
@@ -35,8 +33,6 @@ template AND() {
 
     out <== a*b;
 }
-
-//Signal: out, Bounds: Bounds: [0, 1]
 
 template OR() {
     signal input a;
@@ -46,16 +42,12 @@ template OR() {
     out <== a + b - a*b;
 }
 
-//Signal: out, Bounds: Bounds: [-1, 21888242871839275222246405745257275088548364400416034343698204186575808495615]
-
 template NOT() {
     signal input in;
     signal output out;
 
     out <== 1 + in - 2*in;
 }
-
-Signal: out, Bounds: Bounds: [-21888242871839275222246405745257275088548364400416034343698204186575808495614, 0]
 
 template NAND() {
     signal input a;
@@ -65,8 +57,6 @@ template NAND() {
     out <== 1 - a*b;
 }
 
-//Signal: out, Bounds: Bounds: [0, 1]
-
 template NOR() {
     signal input a;
     signal input b;
@@ -74,8 +64,6 @@ template NOR() {
 
     out <== a*b + 1 - a - b;
 }
-
-//Signal: out, Bounds: Bounds: [-21888242871839275222246405745257275088548364400416034343698204186575808495614, 2]
 
 template MultiAND(n) {
     signal input in[n];
@@ -105,4 +93,4 @@ template MultiAND(n) {
     }
 }
 
-//error: process didn't exit successfully: `target\debug\circom.exe ejemplo.circom` (exit code: 0xc0000409, STATUS_STACK_BUFFER_OVERRUN)
+

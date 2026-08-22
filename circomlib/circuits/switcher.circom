@@ -40,9 +40,3 @@ template Switcher() {
     outL <==  aux + L;
     outR <== -aux + R;
 }
-
-/*
-Signal: outR, Bounds: Bounds: [21888242871839275222246405745257275088548364400416034343698204186575808495615, 21888242871839275222246405745257275088548364400416034343698204186575808495615]
-Signal: aux, Bounds: Bounds: [0, 1]
-Signal: outL, Bounds: Bounds: [0, 0]
-*/

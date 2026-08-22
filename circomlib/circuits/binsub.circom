@@ -72,9 +72,3 @@ template BinSub(n) {
     // Ensure the sum;
     lin === lout;
 }
-/*
-Signal: lout, Bounds: Bounds: [0, 1]//depende de n
-Signal: lin, Bounds: Bounds: [0, 21888242871839275222246405745257275088548364400416034343698204186575808495616]
-Signal: i, Bounds: Bounds: [0, 21888242871839275222246405745257275088548364400416034343698204186575808495616]
-Signal: aux, Bounds: Bounds: [0, 1]
-*/

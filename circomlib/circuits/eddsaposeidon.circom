@@ -121,6 +121,3 @@ template EdDSAPoseidonVerifier() {
     eqCheckY.in[0] <== mulFix.out[1];
     eqCheckY.in[1] <== addRight.yout;
 }
-
-
-//Da error (exit code: 0xc00000fd, STATUS_STACK_OVERFLOW)

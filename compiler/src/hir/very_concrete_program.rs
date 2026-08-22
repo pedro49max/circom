@@ -217,7 +217,7 @@ pub struct TemplateInstance {
     pub clusters: Vec<TriggerCluster>,
     pub code: Code,
     pub is_extern_c: bool,
-    pub signals_to_bounds: HashMap<String, Bounds>
+    pub signals_to_bounds: HashMap<String, (Bounds, bool)>
 }
 
 pub struct TemplateConfig {

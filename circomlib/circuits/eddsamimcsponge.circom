@@ -122,5 +122,3 @@ template EdDSAMiMCSpongeVerifier() {
     eqCheckY.in[0] <== mulFix.out[1];
     eqCheckY.in[1] <== addRight.yout;
 }
-
-//da error (exit code: 0xc00000fd, STATUS_STACK_OVERFLOW)

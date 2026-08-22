@@ -73,5 +73,3 @@ template Mux3() {
 
     mux.out[0] ==> out;
 }
-
-//nO ME DEJA CORREROLO

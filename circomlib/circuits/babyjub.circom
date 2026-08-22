@@ -105,4 +105,3 @@ template BabyPbk() {
     Ax  <== mulFix.out[0];
     Ay  <== mulFix.out[1];
 }
-//Cannot calculate bounds
