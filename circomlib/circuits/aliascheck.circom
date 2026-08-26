@@ -20,10 +20,9 @@ pragma circom 2.0.0;
 
 include "compconstant.circom";
 
-
 template AliasCheck() {
 
-    signal input in[254];
+    signal input in[254]; 
 
     component  compConstant = CompConstant(-1);
 

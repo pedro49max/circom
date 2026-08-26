@@ -54,3 +54,8 @@ template Main() {
 }
 
 component main = Main();
+
+/*
+thread 'main' has overflowed its stack
+error: process didn't exit successfully: `target\debug\circom.exe circomlib/test/circuits/mux4_1.circom` (exit code: 0xc00000fd, STATUS_STACK_OVERFLOW)
+*/

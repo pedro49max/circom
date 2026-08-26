@@ -3,3 +3,30 @@ pragma circom 2.0.0;
 include "../../circuits/montgomery.circom";
 
 component main = MontgomeryDouble();
+
+/*
+template instances: 1
+Signal: B, Bounds: (Bounds: [1, 1], true)
+Signal: d, Bounds: (Bounds: [168696, 168696], true)
+Signal: x1_2, Bounds: (Bounds: [0, 1], false)
+Signal: lamda, Bounds: (Bounds: [0, 21888242871839275222246405745257275088548364400416034343698204186575808495616], false)
+Signal: a, Bounds: (Bounds: [168700, 168700], true)
+Signal: A, Bounds: (Bounds: [168698, 168698], true)
+Signal: out, Bounds: (Bounds: [-21888242871839275222246405745257275088548364400416034343698204186575808495616, 21888242871839275222246405745257275088548364400416034343698204186575808326922], false)
+
+Signal: B, Bounds: (Bounds: [1, 1], true)
+Signal: d, Bounds: (Bounds: [168696, 168696], true)
+Signal: x1_2, Bounds: (Bounds: [0, 1], false)
+Signal: lamda, Bounds: (Bounds: [0, 21888242871839275222246405745257275088548364400416034343698204186575808495616], false)
+Signal: a, Bounds: (Bounds: [168700, 168700], true)
+Signal: A, Bounds: (Bounds: [168698, 168698], true)
+Signal: out, Bounds: (Bounds: [-21888242871839275222246405745257275088548364400416034343698204186575808495616, 21888242871839275222246405745257275088548364400416034343698204186575808326922], false)
+
+Signal: B, Bounds: (Bounds: [1, 1], true)
+Signal: d, Bounds: (Bounds: [168696, 168696], true)
+Signal: x1_2, Bounds: (Bounds: [0, 1], false)
+Signal: lamda, Bounds: (Bounds: [0, 21888242871839275222246405745257275088548364400416034343698204186575808495616], false)
+Signal: a, Bounds: (Bounds: [168700, 168700], true)
+Signal: A, Bounds: (Bounds: [168698, 168698], true)
+Signal: out, Bounds: (Bounds: [-21888242871839275222246405745257275088548364400416034343698204186575808495616, 21888242871839275222246405745257275088548364400416034343698204186575808326922], false)
+*/

@@ -94,7 +94,7 @@ pub fn compute_bounds(
                             template_name, 
                             father_name
                         );
-                        println!("Bounds: {} - {}",
+                        println!("Bounds: {}, {}",
                             (bounds.0).min,
                             (bounds.0).max
                         );
@@ -135,7 +135,7 @@ pub fn compute_bounds(
 
         let pos = id_to_position[template_id];
         let template_name = instances[pos].template_name.clone();
-        let templ_bounds: HashMap<String, (Bounds, bool)> = instances[pos].signals_to_bounds.clone();//Se actualiza solo?
+        let templ_bounds: HashMap<String, (Bounds, bool)> = instances[pos].signals_to_bounds.clone();
         // Check the father templates and get the bounds
 
 

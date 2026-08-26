@@ -26,3 +26,7 @@ template Main() {
 }
 
 component main = Main();
+
+/*thread 'main' has overflowed its stack
+error: process didn't exit successfully: `target\debug\circom.exe circomlib/test/circuits/escalarmul_test_min.circom` (exit code: 0xc00000fd, STATUS_STACK_OVERFLOW)
+*/
