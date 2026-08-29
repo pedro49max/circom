@@ -1,25 +1,15 @@
-include ".\node_modules\circomlib\circuits\compconstant.circom";
-include ".\node_modules\circomlib\circuits\poseidon.circom";
-include ".\node_modules\circomlib\circuits\pointbits.circom";
-include ".\node_modules\circomlib\circuits\mimc.circom";
-include ".\node_modules\circomlib\circuits\mimcsponge.circom";
-include ".\node_modules\circomlib\circuits\bitify.circom";
-include ".\node_modules\circomlib\circuits\escalarmulany.circom";
-include ".\node_modules\circomlib\circuits\escalarmulfix.circom";
-
 
 template Switcher() {
-    signal input sel;
-    signal input L;
-    signal input R;
-    signal output outL;
-    signal output outR;
-
+    signal a <== 5;
+    signal b <== 2;
     signal aux;
-
-    aux <== (R-L)*sel;    // We create aux in order to have only one multiplication
-    outL <==  aux + L;
-    outR <== -aux + R;
+    var mulFix[253];
+    var i;
+    for (i=0; i<253; i++) {
+        mulFix[i] =a*b;
+    }
+    signal safe;
+    safe <-- a != mulFix[0];
 }
 
 component main = Switcher();
